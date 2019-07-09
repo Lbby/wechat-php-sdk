@@ -13,6 +13,8 @@
 
 此`SDK`已历经数个线上项目验证与考验，可靠性与稳定性极高，欢迎`fork`或`star`此项目。
 
+# 新微信开发工具推荐
+WeChatDeveloper：https://github.com/zoujingli/WeChatDeveloper
 
 **微信SDK开发帮助及交流**
 --
@@ -20,21 +22,23 @@
 
 * **文档链接地址**：http://www.kancloud.cn/zoujingli/wechat-php-sdk
 
+* **Think.Admin**：https://github.com/zoujingli/Think.Admin
+
 * **开发交流QQ群：513350915（新）**
 
-**若对您有帮助，可以赞助并支持下作者哦，谢谢！ ^_^**
+**若对您有帮助，可以赞助并支持下作者哦，谢谢！**
 --
-![](https://git.kancloud.cn/repos/zoujingli/wechat-php-sdk/raw/master/image/%E8%B5%9E%E5%8A%A9.png?access-token=49255b63935edafaf42aec9376136528&v1)
+![](http://static.thinkadmin.top/pay.png)
 
 
 **官方接口文档链接**
 --
 * 使用前需先打开微信帐号的开发模式，详细步骤请查看微信公众平台接口使用说明：  
-* 1. 微信公众平台： http://mp.weixin.qq.com/wiki/
-* 2. 微信企业平台： http://qydev.weixin.qq.com/wiki/
-* 3. 微信开放平台：https://open.weixin.qq.com/
-* 4. 微信支付接入文档：https://mp.weixin.qq.com/cgi-bin/readtemplate?t=business/course2_tmpl&lang=zh_CN
-* 5. 微信商户平台：https://pay.weixin.qq.com
+* 微信公众平台： http://mp.weixin.qq.com/wiki/
+* 微信企业平台： http://qydev.weixin.qq.com/wiki/
+* 微信开放平台：https://open.weixin.qq.com/
+* 微信支付接入文档：https://mp.weixin.qq.com/cgi-bin/readtemplate?t=business/course2_tmpl&lang=zh_CN
+* 微信商户平台：https://pay.weixin.qq.com
 
 **微信`SDK`项目源文件托管**
 --
@@ -83,4 +87,3 @@
 --
 * 此SDK基于`MIT`协议发布，任何人可以用在任何地方，不受约束
 * 此SDK部分代码来自互联网，若有异议，可以联系作者进行删除
-

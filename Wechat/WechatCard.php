@@ -1,5 +1,17 @@
 <?php
 
+// +----------------------------------------------------------------------
+// | wechat-php-sdk
+// +----------------------------------------------------------------------
+// | 版权所有 2014~2017 广州楚才信息科技有限公司 [ http://www.cuci.cc ]
+// +----------------------------------------------------------------------
+// | 官方文档: https://www.kancloud.cn/zoujingli/wechat-php-sdk
+// +----------------------------------------------------------------------
+// | 开源协议 ( https://mit-license.org )
+// +----------------------------------------------------------------------
+// | github开源项目：https://github.com/zoujingli/wechat-php-sdk
+// +----------------------------------------------------------------------
+
 namespace Wechat;
 
 use Wechat\Lib\Common;
@@ -8,7 +20,8 @@ use Wechat\Lib\Tools;
 /**
  * 微信卡卷
  */
-class WechatCard extends Common {
+class WechatCard extends Common
+{
 
     /** 卡券相关地址 */
     const CARD_CREATE = '/card/create?';
@@ -46,13 +59,15 @@ class WechatCard extends Common {
     const CARD_PAYCELL_SET = '/card/paycell/set?';
     /*设置开卡字段接口*/
     const CARD_MEMBERCARD_ACTIVATEUSERFORM_SET = '/card/membercard/activateuserform/set?';
+
     /**
      * 获取微信卡券 api_ticket
      * @param string $appid
      * @param string $jsapi_ticket
      * @return bool|string
      */
-    public function getJsCardTicket($appid = '', $jsapi_ticket = '') {
+    public function getJsCardTicket($appid = '', $jsapi_ticket = '')
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -64,12 +79,12 @@ class WechatCard extends Common {
         if (($jsapi_ticket = Tools::getCache($authname))) {
             return $jsapi_ticket;
         }
-        $result = Tools::httpGet(self::API_URL_PREFIX . self::GET_TICKET_URL . "access_token={$this->access_token}" . '&type=wx_card');
+        $result = Tools::httpGet(self::API_URL_PREFIX . self::GET_TICKET_URL . "access_token={$this->access_token}&type=wx_card");
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             $expire = $json['expires_in'] ? intval($json['expires_in']) - 100 : 3600;
@@ -86,7 +101,8 @@ class WechatCard extends Common {
      * @param string $shopid 门店Id
      * @return array
      */
-    public function createChooseCardJsPackage($cardid = NULL, $cardtype = NULL, $shopid = NULL) {
+    public function createChooseCardJsPackage($cardid = null, $cardtype = null, $shopid = null)
+    {
         $data = array();
         $data['api_ticket'] = $this->getJsCardTicket();
         $data['app_id'] = $this->appid;
@@ -107,28 +123,35 @@ class WechatCard extends Common {
      * @param array $data 其它限定参数
      * @return array
      */
-    public function createAddCardJsPackage($cardid = NULL, $data = array()) {
-
-        function _sign($cardid = NULL, $attr = array(), $self) {
-            unset($attr['outer_id']);
-            $attr['cardId'] = $cardid;
-            $attr['timestamp'] = time();
-            $attr['api_ticket'] = $self->getJsCardTicket();
-            $attr['nonce_str'] = Tools::createNoncestr();
-            $attr['signature'] = $self->getTicketSignature($attr);
-            unset($attr['api_ticket']);
-            return $attr;
-        }
-
+    public function createAddCardJsPackage($cardid = null, $data = array())
+    {
         $cardList = array();
         if (is_array($cardid)) {
             foreach ($cardid as $id) {
-                $cardList[] = array('cardId' => $id, 'cardExt' => json_encode(_sign($id, $data, $this)));
+                $cardList[] = array('cardId' => $id, 'cardExt' => json_encode($this->_cardSign($id, $data)));
             }
         } else {
-            $cardList[] = array('cardId' => $cardid, 'cardExt' => json_encode(_sign($cardid, $data, $this)));
+            $cardList[] = array('cardId' => $cardid, 'cardExt' => json_encode($this->_cardSign($cardid, $data)));
         }
         return array('cardList' => $cardList);
+    }
+
+    /**
+     * 卡券数据签名
+     * @param null|string $cardid
+     * @param array $attr
+     * @return array
+     */
+    private function _cardSign($cardid = null, $attr = array())
+    {
+        unset($attr['outer_id']);
+        $attr['cardId'] = $cardid;
+        $attr['timestamp'] = time();
+        $attr['api_ticket'] = $this->getJsCardTicket();
+        $attr['nonce_str'] = Tools::createNoncestr();
+        $attr['signature'] = $this->getTicketSignature($attr);
+        unset($attr['api_ticket']);
+        return $attr;
     }
 
     /**
@@ -137,7 +160,8 @@ class WechatCard extends Common {
      * @param string $method 签名方法
      * @return bool|string 签名值
      */
-    public function getTicketSignature($arrdata, $method = "sha1") {
+    public function getTicketSignature($arrdata, $method = "sha1")
+    {
         if (!function_exists($method)) {
             return false;
         }
@@ -154,16 +178,17 @@ class WechatCard extends Common {
      * @param array $data 卡券数据
      * @return bool|array 返回数组中card_id为卡券ID
      */
-    public function createCard($data) {
+    public function createCard($data)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_CREATE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -177,16 +202,17 @@ class WechatCard extends Common {
      * @param string $data
      * @return bool
      */
-    public function updateCard($data) {
+    public function updateCard($data)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_UPDATE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -201,7 +227,8 @@ class WechatCard extends Common {
      * @param string $card_id 卡券ID
      * @return bool
      */
-    public function delCard($card_id) {
+    public function delCard($card_id)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -209,9 +236,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_DELETE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -225,7 +252,8 @@ class WechatCard extends Common {
      * @param string $card_id 卡卷ID（可不给）
      * @return bool|array
      */
-    public function getCardList($openid, $card_id = '') {
+    public function getCardList($openid, $card_id = '')
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -234,9 +262,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_USER_GET_LIST . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode']) || empty($json['card_list'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -249,7 +277,8 @@ class WechatCard extends Common {
      * @param string $card_id 卡卷ID
      * @return bool|array
      */
-    public function getCardMpHtml($card_id) {
+    public function getCardMpHtml($card_id)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -258,9 +287,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_SEND_HTML . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode']) || empty($json['card_list'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -274,7 +303,8 @@ class WechatCard extends Common {
      * @param array $code_list 卡卷code列表（一维数组）
      * @return bool|array
      */
-    public function checkCardCodeList($card_id, $code_list) {
+    public function checkCardCodeList($card_id, $code_list)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -282,9 +312,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_CHECKCODE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode']) || empty($json['card_list'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -297,7 +327,8 @@ class WechatCard extends Common {
      * @param string $card_id 卡卷ID
      * @return bool|array
      */
-    public function getCardInfo($card_id) {
+    public function getCardInfo($card_id)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -305,9 +336,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_GET . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -320,16 +351,17 @@ class WechatCard extends Common {
      * 获得卡券的最新颜色列表，用于创建卡券
      * @return bool|array
      */
-    public function getCardColors() {
+    public function getCardColors()
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpGet(self::API_BASE_URL_PREFIX . self::CARD_GETCOLORS . "access_token={$this->access_token}");
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -348,7 +380,8 @@ class WechatCard extends Common {
      * @param string $balance 红包余额，以分为单位。红包类型必填（LUCKY_MONEY），其他卡券类型不填。
      * @return bool|string
      */
-    public function createCardQrcode($card_id, $code = '', $openid = '', $expire_seconds = 0, $is_unique_code = false, $balance = '') {
+    public function createCardQrcode($card_id, $code = '', $openid = '', $expire_seconds = 0, $is_unique_code = false, $balance = '')
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -363,9 +396,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_QRCODE_CREATE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -386,7 +419,8 @@ class WechatCard extends Common {
      *  "openid":"oFS7Fjl0WsZ9AMZqrI80nbIq8xrA"
      * }
      */
-    public function consumeCardCode($code, $card_id = '') {
+    public function consumeCardCode($code, $card_id = '')
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -395,9 +429,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_CODE_CONSUME . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -415,7 +449,8 @@ class WechatCard extends Common {
      *  "code":"751234212312"
      *  }
      */
-    public function decryptCardCode($encrypt_code) {
+    public function decryptCardCode($encrypt_code)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -423,9 +458,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_CODE_DECRYPT . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -448,7 +483,8 @@ class WechatCard extends Common {
      *  }
      * }
      */
-    public function checkCardCode($code) {
+    public function checkCardCode($code)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -456,9 +492,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_CODE_GET . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -478,7 +514,8 @@ class WechatCard extends Common {
      *  "total_num":1                                       //该商户名下 card_id 总数
      * }
      */
-    public function getCardIdList($offset = 0, $count = 50) {
+    public function getCardIdList($offset = 0, $count = 50)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -487,9 +524,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_BATCHGET . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -506,7 +543,8 @@ class WechatCard extends Common {
      * @param string $new_code 新的卡券 code 编码
      * @return bool
      */
-    public function updateCardCode($code, $card_id, $new_code) {
+    public function updateCardCode($code, $card_id, $new_code)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -514,9 +552,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_CODE_UPDATE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -531,7 +569,8 @@ class WechatCard extends Common {
      * @param string $card_id 自定义 code 的卡券必填。非自定义 code 的卡券不填。
      * @return bool
      */
-    public function unavailableCardCode($code, $card_id = '') {
+    public function unavailableCardCode($code, $card_id = '')
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -540,9 +579,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_CODE_UNAVAILABLE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -555,16 +594,17 @@ class WechatCard extends Common {
      * @param string $data
      * @return bool
      */
-    public function modifyCardStock($data) {
+    public function modifyCardStock($data)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_MODIFY_STOCK . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -577,16 +617,17 @@ class WechatCard extends Common {
      * @param string $data
      * @return bool
      */
-    public function updateMeetingCard($data) {
+    public function updateMeetingCard($data)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_MEETINGCARD_UPDATEUSER . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -599,16 +640,17 @@ class WechatCard extends Common {
      * @param string $data 具体结构请参看卡券开发文档(6.1.1 激活/绑定会员卡)章节
      * @return bool
      */
-    public function activateMemberCard($data) {
+    public function activateMemberCard($data)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_MEMBERCARD_ACTIVATE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -622,16 +664,17 @@ class WechatCard extends Common {
      * @param string $data 具体结构请参看卡券开发文档(6.1.2 会员卡交易)章节
      * @return bool|array
      */
-    public function updateMemberCard($data) {
+    public function updateMemberCard($data)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_MEMBERCARD_UPDATEUSER . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -645,7 +688,8 @@ class WechatCard extends Common {
      * @param array $user 测试的微信号列表
      * @return bool
      */
-    public function setCardTestWhiteList($openid = array(), $user = array()) {
+    public function setCardTestWhiteList($openid = array(), $user = array())
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -655,9 +699,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_TESTWHILELIST_SET . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -672,7 +716,8 @@ class WechatCard extends Common {
      * @param string $card_id 自定义 code 的卡券必填。非自定义 code 可不填。
      * @return bool|array
      */
-    public function updateLuckyMoney($code, $balance, $card_id = '') {
+    public function updateLuckyMoney($code, $balance, $card_id = '')
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -681,10 +726,9 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_LUCKYMONEY_UPDATE . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
-
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
@@ -700,7 +744,8 @@ class WechatCard extends Common {
      * @param bool $need_remark_amount 用户核销时是否需要备注核销金额，填true/false，默认为false
      * @return bool|array
      */
-    public function setSelfconsumecell($card_id, $is_openid = false, $need_verify_cod = false, $need_remark_amount = false) {
+    public function setSelfconsumecell($card_id, $is_openid = false, $need_verify_cod = false, $need_remark_amount = false)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
@@ -713,35 +758,34 @@ class WechatCard extends Common {
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_SET_SELFCONSUMECELL . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
         }
         return false;
     }
+
     /**
      * 设置买单接口
-     * @DateTime  2016-12-02T19:19:45+0800
-     * @param     [type]                   $card_id   [description]
-     * @param     boolean                  $is_openid [description]
+     * @param string $card_id
+     * @param bool $is_openid
+     * @return bool|mixed
      */
-    public function setPaycell($card_id,$is_openid = true){
+    public function setPaycell($card_id, $is_openid = true)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
-        $data = array(
-            'card_id'            => $card_id,
-            'is_open'            => $is_openid,
-        );
+        $data = array('card_id' => $card_id, 'is_open' => $is_openid,);
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_PAYCELL_SET . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
@@ -751,19 +795,20 @@ class WechatCard extends Common {
 
     /**
      * 设置开卡字段信息接口
-     * @DateTime  2016-12-02T20:31:43+0800
-     * @param     [type]                   $data [description]
+     * @param array $data
+     * @return bool|array
      */
-    public function setMembercardActivateuserform($data){
+    public function setMembercardActivateuserform($data)
+    {
         if (!$this->access_token && !$this->getAccessToken()) {
             return false;
         }
         $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_MEMBERCARD_ACTIVATEUSERFORM_SET . "access_token={$this->access_token}", Tools::json_encode($data));
         if ($result) {
             $json = json_decode($result, true);
-            if (!$json || !empty($json['errcode'])) {
-                $this->errCode = $json['errcode'];
-                $this->errMsg = $json['errmsg'];
+            if (empty($json) || !empty($json['errcode'])) {
+                $this->errCode = isset($json['errcode']) ? $json['errcode'] : '505';
+                $this->errMsg = isset($json['errmsg']) ? $json['errmsg'] : '无法解析接口返回内容！';
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return $json;
